@@ -41,9 +41,6 @@ Public Class ProcessMemoryReader : Implements IDisposable
         End If
     End Sub
 
-    ''' <summary>
-    ''' Closes a handle that was previously obtained by the constructor or a call to the Open method
-    ''' </summary>
     Public Sub Close()
         If Not _TargetProcessHandle = IntPtr.Zero Then
             Dim Result As Boolean = WindowsApi.Win32.CloseHandle(_TargetProcessHandle)
@@ -80,9 +77,6 @@ Public Class ProcessMemoryReader : Implements IDisposable
         MyBase.Finalize()
     End Sub
 
-    ''' <summary>
-    ''' Releases resources and closes any process handles that are still open
-    ''' </summary>
     Public Sub Dispose() Implements IDisposable.Dispose
         Dispose(True)
         GC.SuppressFinalize(Me)
