@@ -1,3 +1,3 @@
 # ProcessCommandLineDemo
 
-Example showing how to get process command lines from .NET, including 64 bit processes
+Shows how to use VB.NET to get the command line used to launch a process (for both 32 bit and 64 bit processes)
