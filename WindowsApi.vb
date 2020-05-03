@@ -4,14 +4,6 @@ Imports System.ComponentModel
 
 Public Class WindowsApi
 
-    Public Shared Function Is64BitOperatingSystem() As Boolean
-        If IntPtr.Size = 8 Then
-            Return True
-        Else
-            Return Is32BitProcessOn64BitOs(Process.GetCurrentProcess)
-        End If
-    End Function
-
     Public Shared Function Is32BitProcessOn64BitOs(ByVal TargetProcess As Process) As Boolean
         Dim IsWow64 As Boolean = False
         If MethodExistsInDll("kernel32.dll", "IsWow64Process") Then
@@ -34,7 +26,7 @@ Public Class WindowsApi
         '32 bit then we will get a 32 bit PEB even on a 64 bit OS. The one situation we can't handle is if we are a 32 bit process and the target
         'process is 64 bit. For that we need to use undocumented NtWow64QueryInformationProcess64 and NtWow64ReadVirtualMemory64 APIs
         Dim Is64BitPeb As Boolean = False
-        If Is64BitOperatingSystem() Then
+        If Environment.Is64BitOperatingSystem() Then
             If Is32BitProcessOn64BitOs(Process.GetCurrentProcess) Then
                 If Not Is32BitProcessOn64BitOs(TargetProcess) Then
                     'TODO: Use NtWow64ReadVirtualMemory64 to read from 64 bit processes when we are a 32 bit process instead of throwing this exception
