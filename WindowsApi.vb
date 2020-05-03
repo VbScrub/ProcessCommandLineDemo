@@ -36,71 +36,64 @@ Public Class WindowsApi
                 Is64BitPeb = True
             End If
         End If
-        If Is64BitPeb Then
-            Return GetCommandLineX64(TargetProcess)
-        Else
-            Return GetCommandLineX86(TargetProcess)
-        End If
-    End Function
 
-    Private Shared Function GetCommandLineX64(TargetProcess As Process) As String
-        Using MemReader As New MemoryReader(TargetProcess)
+        'Open the target process for memory reading
+        Using MemReader As New ProcessMemoryReader(TargetProcess)
             Dim ProcessInfo As New Win32.PROCESS_BASIC_INFORMATION
             'Get basic information about the process, including the PEB address
             Dim Result As Integer = Win32.NtQueryInformationProcess(TargetProcess.Handle, 0, ProcessInfo, Marshal.SizeOf(ProcessInfo), 0)
             If Not Result = 0 Then
                 Throw New System.ComponentModel.Win32Exception(Result)
             End If
-            Dim ParamPtrBytes(7) As Byte
+            'Get the offset of the ProcessParameters member of the PEB (PEB has different structure on x86 vs x64 so different offsets are needed for each)
+            Dim ProcParamsOffsetPtr As IntPtr
+            If Is64BitPeb Then
+                ProcParamsOffsetPtr = New IntPtr(ProcessInfo.PebBaseAddress.ToInt64 + Win32.PROC_PARAMS_OFFSET_X64)
+            Else
+                ProcParamsOffsetPtr = New IntPtr(ProcessInfo.PebBaseAddress.ToInt32 + Win32.PROC_PARAMS_OFFSET_X86)
+            End If
             'Get a byte array that represents the pointer held in the ProcessParameters member of the PEB structure
-            ParamPtrBytes = MemReader.Read(New IntPtr(ProcessInfo.PebBaseAddress.ToInt64 + Win32.PROC_PARAMS_OFFSET_X64), ParamPtrBytes.Length)
-            'Convert the byte array to a pointer so that we have the address for the RTL_USER_PROCESS_PARAMETERS structure
-            Dim ParamPtr As IntPtr = New IntPtr(BitConverter.ToInt64(ParamPtrBytes, 0))
-            Dim UnicodeStringBytes(15) As Byte
-            'Read the UNICODE_STRING_64 (16 bytes long) from the start of the CommandLine member of the RTL_USER_PROCESS_PARAMETERS structure
-            UnicodeStringBytes = MemReader.Read(New IntPtr(ParamPtr.ToInt64 + Win32.CMDLINE_OFFSET_X64), UnicodeStringBytes.Length)
-            'The first 2 bytes in the CommandLine member (UNICODE_STRING_64) tell us the length of the string in bytes
+            Dim ProcParamsPtrBytes(IntPtr.Size - 1) As Byte
+            ProcParamsPtrBytes = MemReader.Read(ProcParamsOffsetPtr, ProcParamsPtrBytes.Length)
+            'Convert the bytes to a pointer so that we have the address for the RTL_USER_PROCESS_PARAMETERS structure
+            Dim ProcParamsStructPtr As IntPtr = New IntPtr(BitConverter.ToInt64(ProcParamsPtrBytes, 0))
+            'The UNICODE_STRING that stores the command line will be 8 bytes long on x86 and 16 bytes long on x64
+            Dim UnicodeStringLength As Integer = 8
+            If Is64BitPeb Then
+                UnicodeStringLength = 16
+            End If
+            Dim UnicodeStringBytes(UnicodeStringLength - 1) As Byte
+            Dim UnicodeStringOffsetPtr As IntPtr
+            'CommandLine member of RTL_USER_PROCESS_PARAMETERS structure is at a different offset depending on if we're on x86 or x64
+            If Is64BitPeb Then
+                UnicodeStringOffsetPtr = New IntPtr(ProcParamsStructPtr.ToInt64 + Win32.CMDLINE_OFFSET_X64)
+            Else
+                UnicodeStringOffsetPtr = New IntPtr(ProcParamsStructPtr.ToInt32 + Win32.CMDLINE_OFFSET_X86)
+            End If
+            'Read UNICODE_STRING/UNICODE_STRING_64 from CommandLine member of RTL_USER_PROCESS_PARAMETERS
+            UnicodeStringBytes = MemReader.Read(UnicodeStringOffsetPtr, UnicodeStringBytes.Length)
+            'The first 2 bytes in the UNICODE_STRING tell us the length of the string in bytes
             Dim CmdLineLength As Integer = BitConverter.ToInt16(UnicodeStringBytes, 0)
             If CmdLineLength = 0 Then
                 Throw New IO.InvalidDataException("Invalid data read from memory (expected UNICODE_STRING length but found null data)")
             End If
-            'Then there's 2 more bytes that just tell us the maximum length, so we ignore them
-            'Then there's 4 bytes of padding (not well documented)
-            'Then we have the pointer to the actual command line string
-            Dim CmdLinePtr As New IntPtr(BitConverter.ToInt64(UnicodeStringBytes, 8))
+            'Then there's 2 more bytes that just tell us the maximum length of the string - we ignore them
+            'On x64 there's 4 bytes of padding (not well documented) and then the 64 bit pointer to the string, so we read that from offset 8 in the UNICODE_STRING_64
+            'On x86 there's no padding so we just grab the 32 bit pointer from offset 4 in the UNICODE_STRING
+            Dim CmdLinePtr As IntPtr
+            If Is64BitPeb Then
+                CmdLinePtr = New IntPtr(BitConverter.ToInt64(UnicodeStringBytes, 8))
+            Else
+                CmdLinePtr = New IntPtr(BitConverter.ToInt32(UnicodeStringBytes, 4))
+            End If
             'Now that we have the address and length of the string, we can read it into a byte array
             Dim CmdLineBytes() As Byte = MemReader.Read(CmdLinePtr, CmdLineLength)
             MemReader.Close()
+            'Now just convert the byte array to a .NET string and return it
             Return Text.Encoding.Unicode.GetString(CmdLineBytes).Trim
         End Using
     End Function
 
-    Private Shared Function GetCommandLineX86(ByVal TargetProcess As Process) As String
-        Using MemReader As New MemoryReader(TargetProcess)
-            Dim ProcessInfo As New Win32.PROCESS_BASIC_INFORMATION
-            'Get basic information about the process, including the PEB address
-            Dim Result As Integer = Win32.NtQueryInformationProcess(TargetProcess.Handle, 0, ProcessInfo, Marshal.SizeOf(ProcessInfo), 0)
-            If Not Result = 0 Then
-                Throw New System.ComponentModel.Win32Exception(Result)
-            End If
-            Dim ParamPtrBytes(3) As Byte
-            'Get a byte array that represents the pointer held in the ProcessParameters member of the PEB structure
-            ParamPtrBytes = MemReader.Read(New IntPtr(ProcessInfo.PebBaseAddress.ToInt32 + Win32.PROC_PARAMS_OFFSET_X86), ParamPtrBytes.Length)
-            'Convert the byte array to a pointer so that we now have the address for the RTL_USER_PROCESS_PARAMETERS structure
-            Dim ParamPtr As IntPtr = New IntPtr(BitConverter.ToInt32(ParamPtrBytes, 0))
-            Dim UnicodeStringBytes(7) As Byte
-            'Read 8 bytes from the start of the CommandLine member of the RTL_USER_PROCESS_PARAMETERS structure
-            UnicodeStringBytes = MemReader.Read(New IntPtr(ParamPtr.ToInt32 + Win32.CMDLINE_OFFSET_X86), UnicodeStringBytes.Length)
-            'The first 2 bytes in the CommandLine member tell us the length of the command line string in bytes
-            Dim CmdLineLength As Integer = BitConverter.ToInt16(UnicodeStringBytes, 0)
-            'The last 4 bytes of the CommandLine member are a pointer to the actual command line string
-            Dim CmdLinePtr As New IntPtr(BitConverter.ToInt32(UnicodeStringBytes, 4))
-            'Now that we have the address and length of the string, we can read it into a byte array
-            Dim CmdLineBytes() As Byte = MemReader.Read(CmdLinePtr, CmdLineLength)
-            MemReader.Close()
-            Return System.Text.Encoding.Unicode.GetString(CmdLineBytes).Trim
-        End Using
-    End Function
 
 
     Public Class Win32
