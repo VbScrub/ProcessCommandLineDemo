@@ -1,24 +1,6 @@
 ﻿Imports System.Runtime.InteropServices
-Imports System.Net.Sockets
-Imports System.ComponentModel
 
 Public Class WindowsApi
-
-    Public Shared Function Is32BitProcessOn64BitOs(ByVal TargetProcess As Process) As Boolean
-        Dim IsWow64 As Boolean = False
-        If MethodExistsInDll("kernel32.dll", "IsWow64Process") Then
-            Win32.IsWow64Process(TargetProcess.Handle, IsWow64)
-        End If
-        Return IsWow64
-    End Function
-
-    Public Shared Function MethodExistsInDll(ByVal ModuleName As String, ByVal MethodName As String) As Boolean
-        Dim ModuleHandle As IntPtr = Win32.GetModuleHandle(ModuleName)
-        If ModuleHandle = IntPtr.Zero Then
-            Return False
-        End If
-        Return (Win32.GetProcAddress(ModuleHandle, MethodName) <> IntPtr.Zero)
-    End Function
 
     Public Shared Function GetCommandLine(ByVal TargetProcess As Process) As String
         'If we're on a 64 bit OS then the target process will have a 64 bit PEB if we are calling this function from a 64 bit process (regardless of
@@ -99,6 +81,22 @@ Public Class WindowsApi
     'Using this generic function just to make the code in the GetCommandLine function easier to read and save some casting 
     Private Shared Function GcHandleToStruct(Of T)(Pointer As IntPtr) As T
         Return DirectCast(Marshal.PtrToStructure(Pointer, GetType(T)), T)
+    End Function
+
+    Public Shared Function Is32BitProcessOn64BitOs(ByVal TargetProcess As Process) As Boolean
+        Dim IsWow64 As Boolean = False
+        If MethodExistsInDll("kernel32.dll", "IsWow64Process") Then
+            Win32.IsWow64Process(TargetProcess.Handle, IsWow64)
+        End If
+        Return IsWow64
+    End Function
+
+    Public Shared Function MethodExistsInDll(ByVal ModuleName As String, ByVal MethodName As String) As Boolean
+        Dim ModuleHandle As IntPtr = Win32.GetModuleHandle(ModuleName)
+        If ModuleHandle = IntPtr.Zero Then
+            Return False
+        End If
+        Return (Win32.GetProcAddress(ModuleHandle, MethodName) <> IntPtr.Zero)
     End Function
 
     Public Class Win32
