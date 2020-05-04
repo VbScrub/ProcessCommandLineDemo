@@ -46,17 +46,22 @@ Public Class WindowsApi
                 Throw New System.ComponentModel.Win32Exception(Result)
             End If
             'Get the offset of the ProcessParameters member of the PEB (PEB has different structure on x86 vs x64 so different offsets are needed for each)
-            Dim ProcParamsOffsetPtr As IntPtr
+            Dim ParamsOffsetPtr As IntPtr
             If Is64BitPeb Then
-                ProcParamsOffsetPtr = New IntPtr(ProcessInfo.PebBaseAddress.ToInt64 + Win32.PROC_PARAMS_OFFSET_X64)
+                ParamsOffsetPtr = New IntPtr(ProcessInfo.PebBaseAddress.ToInt64 + Win32.PROC_PARAMS_OFFSET_X64)
             Else
-                ProcParamsOffsetPtr = New IntPtr(ProcessInfo.PebBaseAddress.ToInt32 + Win32.PROC_PARAMS_OFFSET_X86)
+                ParamsOffsetPtr = New IntPtr(ProcessInfo.PebBaseAddress.ToInt32 + Win32.PROC_PARAMS_OFFSET_X86)
             End If
             'Get a byte array that represents the pointer held in the ProcessParameters member of the PEB structure
-            Dim ProcParamsPtrBytes(IntPtr.Size - 1) As Byte
-            ProcParamsPtrBytes = MemReader.Read(ProcParamsOffsetPtr, ProcParamsPtrBytes.Length)
+            Dim ParamsPtrBytes(IntPtr.Size - 1) As Byte
+            ParamsPtrBytes = MemReader.Read(ParamsOffsetPtr, ParamsPtrBytes.Length)
             'Convert the bytes to a pointer so that we have the address for the RTL_USER_PROCESS_PARAMETERS structure
-            Dim ProcParamsStructPtr As IntPtr = New IntPtr(BitConverter.ToInt64(ProcParamsPtrBytes, 0))
+            Dim ProcParamsStructPtr As IntPtr
+            If Is64BitPeb Then
+                ProcParamsStructPtr = New IntPtr(BitConverter.ToInt64(ParamsPtrBytes, 0))
+            Else
+                ProcParamsStructPtr = New IntPtr(BitConverter.ToInt32(ParamsPtrBytes, 0))
+            End If
             'The UNICODE_STRING that stores the command line will be 8 bytes long on x86 and 16 bytes long on x64
             Dim UnicodeStringLength As Integer = 8
             If Is64BitPeb Then
@@ -104,14 +109,14 @@ Public Class WindowsApi
         Public Const CMDLINE_OFFSET_X86 As Integer = 64
         Public Const CMDLINE_OFFSET_X64 As Integer = 112
 
-        <StructLayout(LayoutKind.Sequential)> _
+        <StructLayout(LayoutKind.Sequential, Pack:=1)> _
         Public Structure PROCESS_BASIC_INFORMATION
-            Public ExitStatus As Integer
+            Public Reserved1 As IntPtr
             Public PebBaseAddress As IntPtr
-            Public AffinityMask As IntPtr
-            Public BasePriority As Integer
+            Public Reserved2 As IntPtr
+            Public Reserved3 As IntPtr
             Public UniqueProcessID As IntPtr
-            Public InheritedFromUniqueProcessId As IntPtr
+            Public Reserved4 As IntPtr
         End Structure
 
         <Flags()> _
@@ -134,26 +139,21 @@ Public Class WindowsApi
         End Function
 
         <DllImport("kernel32.dll", EntryPoint:="GetModuleHandle", SetLastError:=True)> _
-        Public Shared Function GetModuleHandle(ByVal moduleName As String) As IntPtr
+        Public Shared Function GetModuleHandle(ByVal ModuleName As String) As IntPtr
         End Function
 
         <DllImport("kernel32.dll", EntryPoint:="GetProcAddress", SetLastError:=True)> _
-        Public Shared Function GetProcAddress(ByVal hModule As IntPtr, ByVal methodName As String) As IntPtr
+        Public Shared Function GetProcAddress(ByVal hModule As IntPtr, ByVal MethodName As String) As IntPtr
         End Function
 
         <DllImport("ntdll.dll", EntryPoint:="NtQueryInformationProcess", SetLastError:=True)> _
-        Public Shared Function NtQueryInformationProcess(ByVal handle As IntPtr, ByVal processinformationclass As UInteger, ByRef ProcessInformation As PROCESS_BASIC_INFORMATION,
+        Public Shared Function NtQueryInformationProcess(ByVal handle As IntPtr, ByVal Processinformationclass As UInteger, ByRef ProcessInformation As PROCESS_BASIC_INFORMATION,
                                                          ByVal ProcessInformationLength As Integer, ByRef ReturnLength As UInteger) As Integer
         End Function
 
         <DllImport("kernel32.dll", EntryPoint:="ReadProcessMemory", SetLastError:=True)> _
         Public Shared Function ReadProcessMemory(<InAttribute()> ByVal hProcess As System.IntPtr, <InAttribute()> ByVal lpBaseAddress As IntPtr, <Out()> ByVal lpBuffer As Byte(),
                                                  ByVal nSize As UInteger, <Out()> ByRef lpNumberOfBytesRead As UInteger) As <MarshalAs(UnmanagedType.Bool)> Boolean
-        End Function
-
-        <DllImport("Psapi.dll", EntryPoint:="GetModuleFileNameExW", SetLastError:=True)> _
-        Public Shared Function GetModuleFileNameExW(ByVal hProcess As IntPtr, ByVal hModule As IntPtr, <MarshalAs(UnmanagedType.LPWStr)> ByVal lpFilename As Text.StringBuilder,
-                                                    ByVal nSize As UInteger) As UInteger
         End Function
 
         <DllImport("kernel32.dll", EntryPoint:="OpenProcess", SetLastError:=True)> _
