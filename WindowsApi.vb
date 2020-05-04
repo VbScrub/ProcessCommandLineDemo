@@ -109,14 +109,14 @@ Public Class WindowsApi
         Public Const CMDLINE_OFFSET_X86 As Integer = 64
         Public Const CMDLINE_OFFSET_X64 As Integer = 112
 
-        <StructLayout(LayoutKind.Sequential, Pack:=1)> _
+        <StructLayout(LayoutKind.Sequential)> _
         Public Structure PROCESS_BASIC_INFORMATION
             Public Reserved1 As IntPtr
             Public PebBaseAddress As IntPtr
-            Public Reserved2 As IntPtr
-            Public Reserved3 As IntPtr
+            <MarshalAs(UnmanagedType.ByValArray, SizeConst:=2)>
+            Public Reserved2() As IntPtr
             Public UniqueProcessID As IntPtr
-            Public Reserved4 As IntPtr
+            Public Reserved3 As IntPtr
         End Structure
 
         <Flags()> _
@@ -145,6 +145,8 @@ Public Class WindowsApi
         <DllImport("kernel32.dll", EntryPoint:="GetProcAddress", SetLastError:=True)> _
         Public Shared Function GetProcAddress(ByVal hModule As IntPtr, ByVal MethodName As String) As IntPtr
         End Function
+
+
 
         <DllImport("ntdll.dll", EntryPoint:="NtQueryInformationProcess", SetLastError:=True)> _
         Public Shared Function NtQueryInformationProcess(ByVal handle As IntPtr, ByVal Processinformationclass As UInteger, ByRef ProcessInformation As PROCESS_BASIC_INFORMATION,
