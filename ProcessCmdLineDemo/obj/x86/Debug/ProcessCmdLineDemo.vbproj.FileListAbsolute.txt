@@ -1,0 +1,8 @@
+G:\Redirected Folders\My Documents\Visual Studio 2008\Projects\ProcessCmdLineDemo\ProcessCmdLineDemo\bin\Debug\ProcessCmdLineDemo.exe
+G:\Redirected Folders\My Documents\Visual Studio 2008\Projects\ProcessCmdLineDemo\ProcessCmdLineDemo\bin\Debug\ProcessCmdLineDemo.pdb
+G:\Redirected Folders\My Documents\Visual Studio 2008\Projects\ProcessCmdLineDemo\ProcessCmdLineDemo\bin\Debug\ProcessCmdLineDemo.xml
+G:\Redirected Folders\My Documents\Visual Studio 2008\Projects\ProcessCmdLineDemo\ProcessCmdLineDemo\obj\x86\Debug\ProcessCmdLineDemo.Resources.resources
+G:\Redirected Folders\My Documents\Visual Studio 2008\Projects\ProcessCmdLineDemo\ProcessCmdLineDemo\obj\x86\Debug\ProcessCmdLineDemo.vbproj.GenerateResource.Cache
+G:\Redirected Folders\My Documents\Visual Studio 2008\Projects\ProcessCmdLineDemo\ProcessCmdLineDemo\obj\x86\Debug\ProcessCmdLineDemo.exe
+G:\Redirected Folders\My Documents\Visual Studio 2008\Projects\ProcessCmdLineDemo\ProcessCmdLineDemo\obj\x86\Debug\ProcessCmdLineDemo.xml
+G:\Redirected Folders\My Documents\Visual Studio 2008\Projects\ProcessCmdLineDemo\ProcessCmdLineDemo\obj\x86\Debug\ProcessCmdLineDemo.pdb

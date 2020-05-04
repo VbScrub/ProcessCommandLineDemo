@@ -1,5 +1,4 @@
-﻿
-Public Class ProcessMemoryReader : Implements IDisposable
+﻿Public Class ProcessMemoryReader : Implements IDisposable
 
     Private _TargetProcess As Process = Nothing
     Private _TargetProcessHandle As IntPtr = IntPtr.Zero
@@ -11,7 +10,6 @@ Public Class ProcessMemoryReader : Implements IDisposable
         _TargetProcess = ProcessToRead
         Me.Open()
     End Sub
-
 
     Public Function Read(ByVal MemoryAddress As IntPtr, ByVal Count As Integer) As Byte()
         If _TargetProcessHandle = IntPtr.Zero Then
@@ -53,8 +51,6 @@ Public Class ProcessMemoryReader : Implements IDisposable
     End Sub
 
 
-
-
 #Region "IDisposable Support"
 
     Private disposedValue As Boolean
@@ -86,4 +82,3 @@ Public Class ProcessMemoryReader : Implements IDisposable
 
 
 End Class
-
